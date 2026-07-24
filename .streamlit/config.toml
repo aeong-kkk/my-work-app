@@ -1,0 +1,7 @@
+[theme]
+base = "light"
+primaryColor = "#FF5A3C"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FAFAF9"
+textColor = "#14161A"
+font = "Malgun Gothic"
