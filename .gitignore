@@ -1,5 +1,6 @@
 # 비밀 값 - 반드시 제외 (.env.example은 값이 없는 형식 예시라 추적해도 됨)
 .env
+.streamlit/secrets.toml
 
 # 파이썬 캐시/가상환경
 __pycache__/
