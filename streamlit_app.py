@@ -24,7 +24,7 @@ CHAT_MODEL = "gpt-4o-mini"
 CONTEXT_PATHS = [Path(__file__).parent / "CLAUDE.md", *sorted((Path(__file__).parent / "specs").glob("*.md"))]
 
 CHATBOT_SYSTEM_PROMPT = """\
-너는 이 App(사내 발주 자동화 서비스) 화면에 방문한 사람의 질문에 답하는 안내 챗봇이야.
+너는 이 App(개발샘플현황표 자동화 서비스) 화면에 방문한 사람의 질문에 답하는 안내 챗봇이야.
 아래는 이 서비스의 기획 문서와 개발 가이드 전문이야. 이 내용만 근거로 이 서비스가 무엇을 하는지,
 어떤 기능이 있는지, 어떻게 쓰는지를 친절하고 간결하게 answer해.
 문서에 없는 내용은 추측하지 말고 모른다고 답해. 실제 사내 자료·개인정보는 언급하지 마.
@@ -77,7 +77,7 @@ def _get_chat_reply(chat_history):
         return f"답변을 가져오지 못했어요: {e}"
 
 
-st.set_page_config(page_title="샘플발주 내역 리스트화", page_icon="📦", layout="wide")
+st.set_page_config(page_title="개발샘플현황표 자동화", page_icon="📦", layout="wide")
 
 # 아래는 스타일(색·글꼴·여백·배치)만 담당 -- 화면 구조·기능 로직은 그대로다.
 st.markdown(
@@ -145,6 +145,16 @@ st.markdown(
     [data-testid="stTabs"] {
         margin-top: 1.2rem;
     }
+    [data-testid="stTabs"] [data-testid="stTab"] p {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: #9CA0A8;
+        padding: .2rem 0;
+    }
+    [data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] p {
+        color: #FF5A3C;
+        font-weight: 700;
+    }
 
     div[data-testid="stFileUploaderDropzone"] {
         background: #FAFAF9 !important;
@@ -194,8 +204,8 @@ st.markdown(
     }
     </style>
 
-    <div class="hero-badge"><span class="dot"></span>샘플</div>
-    <div class="hero-title">발주 내역<br><span class="accent">리스트화</span></div>
+    <div class="hero-badge"><span class="dot"></span>개발샘플</div>
+    <div class="hero-title">현황표<br><span class="accent">자동화</span></div>
     """,
     unsafe_allow_html=True,
 )
