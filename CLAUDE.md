@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 이 저장소엔 빌드 시스템·린터·테스트가 없습니다 — 독립적인 파이썬 스크립트 몇 개로만 이루어져 있습니다.
 
-- 의존성 설치 (requirements.txt·가상환경 없이 그냥 pip 사용): `pip install openpyxl openai streamlit`
+- 의존성 설치 (가상환경 없이 그냥 pip 사용): `pip install -r requirements.txt` (또는 `pip install openpyxl openai pandas streamlit`) — 다른 곳에서 그대로 돌릴 수 있도록 실제 사용 중인 패키지·버전을 `requirements.txt`에 고정해둠. 새 패키지를 실제로 import해서 쓰게 되면 `requirements.txt`도 같이 업데이트할 것
 - 기능 1 실행 (발주 엑셀 → 리드타임 계산): `python feature1_extract_order.py [엑셀파일경로]` — 경로를 안 주면 기본값으로 `inputs/sample-order-input.xlsx`를 읽음
 - 기능 2 실행 (AI 이미지 생성): `python feature2_generate_image.py "이미지 설명"` — 인자를 안 주면 대화형으로 입력받음
 - 기능 3 실행 (메모 AI 카테고리 분류): `python feature3_categorize_memos.py` — 인자 없음, `practice/memos/` 폴더의 `.md` 파일을 전부 읽음
