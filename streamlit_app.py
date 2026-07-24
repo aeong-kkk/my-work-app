@@ -204,8 +204,7 @@ st.markdown(
     }
     </style>
 
-    <div class="hero-badge"><span class="dot"></span>개발샘플</div>
-    <div class="hero-title">현황표<br><span class="accent">자동화</span></div>
+    <div class="hero-title">개발샘플현황표 <span class="accent">자동화</span></div>
     """,
     unsafe_allow_html=True,
 )
