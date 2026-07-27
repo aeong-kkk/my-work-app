@@ -10,7 +10,10 @@ feature1_extract_order.py의 extract_order_records()를 그대로 재사용한�
 실행: streamlit run streamlit_app.py
 """
 
+import calendar
 import os
+import re
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -18,6 +21,20 @@ import streamlit as st
 from openai import OpenAI
 
 from feature1_extract_order import OrderFileError, extract_order_records
+
+STAGE_BASES = ["DV", "DVR", "PV", "PVR"]
+STAGE_BASE_RANK = {"DV": 0, "DVR": 1, "PV": 2, "PVR": 3}
+
+
+def _stage_label(base, round_no):
+    return f"{base}{round_no}차" if base in ("DV", "PV") else base
+
+
+def _stage_sort_key(stage):
+    match = re.match(r"^(DV|PV)(\d+)차$", stage)
+    if match:
+        return (STAGE_BASE_RANK[match.group(1)], int(match.group(2)))
+    return (STAGE_BASE_RANK.get(stage, 99), 0)
 
 ENV_PATH = Path(__file__).parent / ".env"
 CHAT_MODEL = "gpt-4o-mini"
@@ -215,9 +232,15 @@ if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "schedule_records" not in st.session_state:
+    st.session_state.schedule_records = []
+if "calendar_year" not in st.session_state:
+    st.session_state.calendar_year = date.today().year
+if "calendar_month" not in st.session_state:
+    st.session_state.calendar_month = date.today().month
 
 # 기능을 고르는 탭
-order_tab, analysis_tab = st.tabs(["발주 리스트", "리드타임 분석"])
+order_tab, analysis_tab, schedule_tab = st.tabs(["발주 리스트", "리드타임 분석", "개발단계·승인원 일정"])
 
 with order_tab:
     st.markdown(
@@ -323,6 +346,117 @@ with analysis_tab:
 
                 with st.expander("원본 데이터 미리보기"):
                     st.dataframe(df, use_container_width=True)
+
+with schedule_tab:
+    st.markdown(
+        '<p class="hero-sub">모델별 개발단계와 승인원 일정을 입력하면 보드·캘린더로 볼 수 있어요. '
+        "(브라우저 세션 안에서만 유지되고, 새로고침하면 초기화됩니다)</p>",
+        unsafe_allow_html=True,
+    )
+
+    with st.form("schedule_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            model_name = st.text_input("모델명")
+            stage_base = st.selectbox("개발단계", STAGE_BASES)
+        with col2:
+            round_no = st.number_input("차수", min_value=1, step=1, value=1) if stage_base in ("DV", "PV") else None
+            approval_date = st.date_input("승인원 일정", value=date.today())
+        note = st.text_input("비고 (선택)")
+        submitted = st.form_submit_button("추가", type="primary")
+
+        if submitted:
+            if not model_name.strip():
+                st.warning("모델명을 입력해주세요.")
+            else:
+                stage_label = _stage_label(stage_base, round_no)
+                st.session_state.schedule_records.append(
+                    {
+                        "모델명": model_name.strip(),
+                        "개발단계": stage_label,
+                        "승인원 일정": approval_date,
+                        "비고": note.strip(),
+                    }
+                )
+                st.success(f"{model_name.strip()} - {stage_label} 추가했습니다.")
+
+    if not st.session_state.schedule_records:
+        st.caption("아직 등록된 일정이 없습니다.")
+    else:
+        board_tab, calendar_view_tab = st.tabs(["보드", "캘린더"])
+
+        with board_tab:
+            # 모델별 가장 최근(마지막으로 추가된) 레코드의 단계를 대표값으로 사용
+            latest_stage = {}
+            for r in st.session_state.schedule_records:
+                latest_stage[r["모델명"]] = r["개발단계"]
+
+            stages_present = sorted(set(latest_stage.values()), key=_stage_sort_key)
+            board_cols = st.columns(len(stages_present))
+            for col, stage in zip(board_cols, stages_present):
+                with col:
+                    st.markdown(f"**{stage}**")
+                    for model in [m for m, s in latest_stage.items() if s == stage]:
+                        st.markdown(
+                            f'<div style="border:1px solid #ECECEA;border-radius:10px;'
+                            f'padding:.5rem .8rem;margin-bottom:.5rem;">{model}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+        with calendar_view_tab:
+            nav_prev, nav_label, nav_next = st.columns([1, 3, 1])
+            with nav_prev:
+                if st.button("◀ 이전달"):
+                    m, y = st.session_state.calendar_month - 1, st.session_state.calendar_year
+                    if m == 0:
+                        m, y = 12, y - 1
+                    st.session_state.calendar_month, st.session_state.calendar_year = m, y
+                    st.rerun()
+            with nav_next:
+                if st.button("다음달 ▶"):
+                    m, y = st.session_state.calendar_month + 1, st.session_state.calendar_year
+                    if m == 13:
+                        m, y = 1, y + 1
+                    st.session_state.calendar_month, st.session_state.calendar_year = m, y
+                    st.rerun()
+            with nav_label:
+                st.markdown(
+                    f'<p style="text-align:center;font-weight:700;">'
+                    f"{st.session_state.calendar_year}년 {st.session_state.calendar_month}월</p>",
+                    unsafe_allow_html=True,
+                )
+
+            events_by_date = {}
+            for r in st.session_state.schedule_records:
+                events_by_date.setdefault(r["승인원 일정"], []).append(r["모델명"])
+
+            header_cols = st.columns(7)
+            for col, name in zip(header_cols, ["월", "화", "수", "목", "금", "토", "일"]):
+                col.markdown(f"**{name}**")
+
+            weeks = calendar.monthcalendar(st.session_state.calendar_year, st.session_state.calendar_month)
+            for week in weeks:
+                week_cols = st.columns(7)
+                for col, day in zip(week_cols, week):
+                    with col:
+                        if day == 0:
+                            st.markdown("&nbsp;", unsafe_allow_html=True)
+                            continue
+                        day_date = date(st.session_state.calendar_year, st.session_state.calendar_month, day)
+                        cell_html = (
+                            f'<div style="min-height:64px;border:1px solid #ECECEA;'
+                            f'border-radius:8px;padding:.3rem;"><div style="font-weight:600;">{day}</div>'
+                        )
+                        for model in events_by_date.get(day_date, []):
+                            cell_html += (
+                                f'<div style="font-size:.75rem;background:#FFF1EC;'
+                                f'border-radius:6px;padding:.1rem .3rem;margin-top:.2rem;">{model}</div>'
+                            )
+                        cell_html += "</div>"
+                        st.markdown(cell_html, unsafe_allow_html=True)
+
+        st.markdown('<div class="result-heading">전체 이력</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame(st.session_state.schedule_records), use_container_width=True)
 
 # 화면 우측 아래 떠 있는 챗봇 -- 탭과 무관하게 항상 노출.
 # 이 서비스가 뭘 하는 앱인지는 CLAUDE.md·specs/*.md를 읽어서 스스로 파악한 내용을 GPT에게 근거로 준다.
