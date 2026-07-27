@@ -1,6 +1,6 @@
 """기능 1 -- 발주 엑셀에서 정보 추출 + 리드타임 계산 (feature-1-spec.md 구현)
 
-입력: 발주 엑셀 파일 1개 (Info 시트 1개뿐 -- 예전 Packing 시트는 Info!I1 "Shipping Information" 구역으로 통합됨)
+입력: 발주 엑셀 파일 1개 (Info 시트 1개뿐 -- 예전 Packing 시트는 Info 시트 안 "Shipping Information" 구역으로 통합됨)
 동작: feature-1-spec.md '동작' 단계 참고
 출력: 결과 행(들) -- 발주일/구분/요청일/모델명/내부명/수량/층구성/리드타임(일수)/비고
 """
@@ -13,9 +13,16 @@ from pathlib import Path
 import openpyxl
 
 REQUIRED_SHEETS = ("Info",)
-SHIPPING_INFO_START_ROW = 3
-SHIPPING_QTY_COL = "I"
-SHIPPING_DATE_COL = "M"
+ORDER_DATE_CELL = "I1"
+ORDER_TYPE_CELL = "G3"
+MODEL_NAME_CELL = "G5"
+INTERNAL_NAME_CELL = "G6"
+TOTAL_T_CELL = "G26"
+LAYER_COUNT_CELL = "G27"
+LAYER_SPEC_CELL = "I27"
+SHIPPING_INFO_START_ROW = 15
+SHIPPING_QTY_COL = "D"
+SHIPPING_DATE_COL = "H"
 
 
 class OrderFileError(Exception):
@@ -106,19 +113,22 @@ def extract_order_records(file_path):
     info = wb["Info"]
 
     # 2~6. 발주일 / 구분(신규발주·재발주) / 모델명(Customer Model Name) / 내부명(Internal Model Name) / Total-T(板厚) / 층구성(层构成)
-    order_date = _to_date(info["G1"].value)
-    order_type = _classify_order_type(info["F3"].value)
-    model_name = _clean_text(info["F5"].value)
-    internal_name = _clean_text(info["F6"].value)
-    total_t = _clean_text(info["G18"].value)
-    layer_config = _clean_text(info["G19"].value)
+    order_date = _to_date(info[ORDER_DATE_CELL].value)
+    order_type = _classify_order_type(info[ORDER_TYPE_CELL].value)
+    model_name = _clean_text(info[MODEL_NAME_CELL].value)
+    internal_name = _clean_text(info[INTERNAL_NAME_CELL].value)
+    total_t = _clean_text(info[TOTAL_T_CELL].value)
+    # 층구성은 층수(예: "10L")와 나머지 스펙(예: "FVSS3")이 서로 다른 셀로 나뉘어 있어 "10L/FVSS3" 형식으로 합침
+    layer_count = _clean_text(info[LAYER_COUNT_CELL].value)
+    layer_spec = _clean_text(info[LAYER_SPEC_CELL].value)
+    layer_config = "/".join(part for part in (layer_count, layer_spec) if part) or None
 
-    # 6. "Shipping Information" 구역(I열 기준)에 값이 입력된 행 확인
+    # 6. "Shipping Information" 구역(수량 열 기준)에 값이 입력된 행 확인
     shipping_rows = _filled_rows(info, SHIPPING_INFO_START_ROW, SHIPPING_QTY_COL)
     if not shipping_rows:
-        raise OrderFileError("Shipping Information 구역(I열)에 값이 없음")
+        raise OrderFileError("Shipping Information 구역(수량 열)에 값이 없음")
 
-    # 7. 각 행 -> 수량(I열)/요청일(M열), 행 개수만큼 결과 생성
+    # 7. 각 행 -> 수량/요청일, 행 개수만큼 결과 생성
     raw_records = [
         {
             "quantity": info[f"{SHIPPING_QTY_COL}{row}"].value,
@@ -199,7 +209,7 @@ def print_results(records):
 
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "inputs/sample-order-input.xlsx"
+    target = sys.argv[1] if len(sys.argv) > 1 else "inputs/order sheet.xlsx"
     path = Path(target)
     if not path.is_absolute():
         path = Path(__file__).parent / target

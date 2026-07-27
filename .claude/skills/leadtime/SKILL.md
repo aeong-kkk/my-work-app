@@ -9,7 +9,7 @@ description: 발주 엑셀 파일(Info 시트)을 읽어 모델명·수량·요�
 발주 엑셀 파일 1개(Info 시트)에서 모델명·내부명·수량·요청일·Total-T(板厚)·층구성·구분(신규발주/재발주)을 추출하고, 리드타임(일수, 요청일-발주일)을 계산해 결과 표로 보여준다. 한 파일 안에 요청일이 서로 다른 행이 여러 개 있으면, 그중 가장 늦은 요청일인 행은 구분을 "분할입고"로 표시한다.
 
 ## 입력
-발주 엑셀 파일 1개 (Info 시트 1개뿐, 발주일은 Info!G1, 수량·요청일은 Info 시트 안 "Shipping Information" 구역). 사용자가 경로를 지정하지 않으면 연습용 샘플(`inputs/sample-order-input.xlsx`)을 사용한다.
+발주 엑셀 파일 1개 (Info 시트 1개뿐, 발주일은 Info!I1, 수량·요청일은 Info 시트 안 "Shipping Information" 구역). 사용자가 경로를 지정하지 않으면 연습용 샘플(`inputs/order sheet.xlsx`)을 사용한다.
 
 ## 순서
 1. `python feature1_extract_order.py [엑셀파일경로]`를 실행한다 (경로 생략 시 기본 샘플 사용).
